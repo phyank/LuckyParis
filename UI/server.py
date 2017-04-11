@@ -1,17 +1,19 @@
 # A light weight server in Django style powered by Python Standard Lib
 # See views.py to learn how to write a view
 
-from http.server import HTTPServer, BaseHTTPRequestHandler
-import urllib.parse, io, shutil, os
+from http.server import BaseHTTPRequestHandler,HTTPServer
+import urllib.parse, io, shutil
 from http import HTTPStatus
 from UI.views import *
+
+MIME_LIST={"css":"text/css","js":"application/x-javascript","jpg":"image/jpeg",
+           "jpeg":"image/jpeg","png":"image/png","gif":"image/gif","ico":"image/x-ico"}
 
 
 class MyRequestHandler(BaseHTTPRequestHandler):
     def __init__(self, request, client_address, server):
         self.content = ""
-        self.commands = ['/test']
-        self.error_message_format=DEFAULT_ERROR_MESSAGE
+        self.error_message_format=DEFAULT_ERROR_MESSAGE # You can define your error page here
 
         BaseHTTPRequestHandler.__init__(self, request, client_address, server)
 
@@ -23,8 +25,27 @@ class MyRequestHandler(BaseHTTPRequestHandler):
 
         self.do_response("POST")
 
+    def MIME_identify(self,path):
+        ctype = "text/plain"
+        try:
+
+            fileType=path
+            while "." in fileType:
+                _, _, fileType = fileType.partition(".")
+
+            ctype=MIME_LIST[fileType]
+
+        except:
+            pass
+
+        #print("Path:"+path+"\nType:"+ctype)
+        return ctype
+
+    # This function serve static files. You'd better serve
+    # HTML templates in views.py. You should define a MIME
+    # type in MIME_LIST before serve a new type of files
+
     def serve_file(self, path):
-        
         if os.path.isdir(path):
             parts = urllib.parse.urlsplit(self.path)
             if not parts.path.endswith('/'):
@@ -43,7 +64,7 @@ class MyRequestHandler(BaseHTTPRequestHandler):
                     break
             else:
                 return False
-        ctype = 'text/plain'
+
 
         try:
 
@@ -51,6 +72,8 @@ class MyRequestHandler(BaseHTTPRequestHandler):
         except OSError:
             self.send_error(HTTPStatus.NOT_FOUND, "File not found")
             return False
+
+        ctype = self.MIME_identify(path)
 
         try:
             self.send_response(HTTPStatus.OK)
@@ -68,15 +91,19 @@ class MyRequestHandler(BaseHTTPRequestHandler):
 
     def do_response(self, method):
 
+        path_and_query = urllib.parse.splitquery(self.path) # Separate the query from the path
+        requestPath = path_and_query[0]
+        if path_and_query[1]: query = path_and_query[1]
+        else: query=""
+
+        dataDict = {}
+
         if method == "POST":
-            query = urllib.parse.splitquery(self.path)
-            requestPath = query[0]
+
 
             data = self.rfile.read(int(self.headers['content-length']))
 
             data = urllib.parse.unquote(data.decode("utf-8", 'ignore'))
-
-            dataDict = {}
 
             for i in data.split("&"):
                 key, _, value = i.partition("=")
@@ -85,20 +112,14 @@ class MyRequestHandler(BaseHTTPRequestHandler):
             responsefromView=command_selector(requestPath, "POST", dataDict)
 
 
-        else:
-            query = urllib.parse.splitquery(self.path)
-            requestPath = query[0]
-
-            dataDict={}
+        else: #method=="GET"
 
             if '?' in self.path:
 
-                if query[1]:
+                if query:
 
-                    for i in query[1].split('&'):
+                    for i in query.split('&'):
                         k = i.split('=')
-
-                        print(k[0])
 
                         dataDict[k[0]] = urllib.parse.unquote(k[1])
                 else:
@@ -128,3 +149,6 @@ class MyRequestHandler(BaseHTTPRequestHandler):
         shutil.copyfileobj(f, self.wfile)
 
 
+class LPServer(HTTPServer):
+    def __init__(self,addr, port, bind_and_active=True):
+        HTTPServer.__init__(self,(addr,port),MyRequestHandler,bind_and_active)

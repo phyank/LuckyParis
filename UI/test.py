@@ -1,7 +1,7 @@
 from UI.server import *
 
 def test():
-    svr = HTTPServer(("", 8080), MyRequestHandler)
+    svr = LPServer("", 8080)
     svr.serve_forever()
 
 test()

@@ -1,3 +1,8 @@
+from jinja2 import Template
+import os
+
+from database.mainDB import MainDB
+
 TEST_PAGE="""<!DOCTYPE html>
 <html>
 <head>
@@ -8,6 +13,8 @@ TEST_PAGE="""<!DOCTYPE html>
 <p>Test:红帽子</p>
 <p>设置PyCharm支持中文</p>
 </div>
+<div>
+<img src="/static/image/test.jpg" />
 </body>
 </html>
 """
@@ -29,6 +36,15 @@ DEFAULT_ERROR_MESSAGE = """\
 </html>
 """
 
+class FileOpeningError:
+    pass
+
+class UIStatus:
+    def __init__(self):
+        self.ifLogIn=False
+
+        self.username=""
+        self.password=""
 
 class ViewsResponse:
     def __init__(self, content, head={}, status=200):
@@ -46,18 +62,77 @@ class ViewsRedirect(ViewsResponse):
         ViewsResponse.__init__(self,"",head={"Location":url},status=301)
 
 
+uiStatus=UIStatus()
+db=MainDB()
 
+
+def open_file_as_string(filepath):
+
+    filepath=os.path.dirname(__file__)+filepath
+
+    if os.path.exists(filepath):
+        try:
+            f=open(filepath, "rb")
+            result = (f.read()).decode('utf-8','ignore')
+            f.close()
+            return result
+        except:
+            raise FileOpeningError
+    else:
+        raise FileNotFoundError
 
 
 def command_selector(command,method,data):
     if command=="/test":
         return test(method,data)
 
+    elif command=="/":
+        return index(method,data)
+
+    elif command=="/login":
+        return login(method, data)
+
+    elif command=="/search":
+        return search(method, data)
+
+    #elif command=="/search"
+    #    return search(method,data)
+
     else:
         return
 
 
 #Views:
+
+def index(method,data):
+    if method=="GET":
+        if uiStatus.ifLogIn:
+            indexT=Template(open_file_as_string('/static/template/index.html'))
+            db_data=db.get_summer_course()
+            result=indexT.render(db_data)
+            return ViewsResponse(result)
+
+        else:
+            return login("GET", 0)
+
+def login(method,data):
+    if method=="GET":
+        return ViewsResponse(open_file_as_string("/static/template/login.html"))
+    if method=="POST":
+        #TODO: Check
+        uiStatus.username,uiStatus.password = data['user'],data['pass']
+        uiStatus.ifLogIn = True
+        return ViewsRedirect("/")
+
+def search(method,data):
+    if method == "GET":
+        return ViewsRedirect("/")
+
+    else:
+        db_result = db.search(data["keywords"])
+        searchT = Template(open_file_as_string('/static/template/index.html'))
+        result = searchT.render(db_result)
+        return ViewsResponse(result)
 
 def test(method,data):
 
