@@ -95,6 +95,9 @@ def command_selector(command,method,data):
     elif command=="/search":
         return search(method, data)
 
+    elif command=="/logout":
+        return logout(method,data)
+
     #elif command=="/search"
     #    return search(method,data)
 
@@ -113,7 +116,7 @@ def index(method,data):
             return ViewsResponse(result)
 
         else:
-            return login("GET", 0)
+            return ViewsRedirect("/login")
 
 def login(method,data):
     if method=="GET":
@@ -123,6 +126,11 @@ def login(method,data):
         uiStatus.username,uiStatus.password = data['user'],data['pass']
         uiStatus.ifLogIn = True
         return ViewsRedirect("/")
+
+def logout(method,data):
+    uiStatus.username, uiStatus.password="",""
+    uiStatus.ifLogIn=False
+    return ViewsRedirect("/login")
 
 def search(method,data):
     if method == "GET":
