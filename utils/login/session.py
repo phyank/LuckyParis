@@ -1,17 +1,16 @@
-import logging
-import pickle
-import re
-from functools import wraps
-from io import BytesIO
-from time import sleep
+from ..settings import (SELECT_COURSE_URL, NORMAL_CHECK_URL_TEMPLATE,
+                       ELE_LOGIN_URL, SUMMER_CHECK_URL_TEMPLATE, JACCOUNT_URL)
+
 from urllib.parse import unquote
-
-import requests
+from time import sleep
+from functools import wraps
 from PIL import Image
+from io import BytesIO
 from pytesseract import image_to_string
-
-from utils.settings import (SELECT_COURSE_URL, NORMAL_CHECK_URL_TEMPLATE,
-                            ELE_LOGIN_URL, SUMMER_CHECK_URL_TEMPLATE, JACCOUNT_URL)
+import requests
+import logging
+import re
+import pickle
 
 logger = logging.getLogger()
 
@@ -21,15 +20,11 @@ class Session(object):
     ''' 包装requests.session，进行登录后的验证和处理教务网的message和session过期
     '''
     # Abstract base class needing CHECK_URL.
-    def __init__(self):
-        self.username = ""
-        self.password = ""
-        logger.debug("Session object initialization complete.")
-
-    def login(self, username="", password=""):
+    def __init__(self, username, password):
         self.username = username
         self.password = password
         self.refresh()
+        logger.debug("Session object initialization complete.")
 
     def _login(self):
         def __parse_jaccount_page(html):
@@ -120,11 +115,12 @@ class Session(object):
 class SessionFactory(object):
     ''' Abstract session factory with CHECK_URL_TEMPLATE not specified.
     '''
+    def __init__(self, username, password):
+        self.username = username
+        self.password = password
 
-    def create(self, description, username, password):
-        session = Session()
-        session.login(username,password)
-
+    def create(self, description):
+        session = Session(self.username, self.password)
         if description['type'] == 'summer':
             session.CHECK_URL = SUMMER_CHECK_URL_TEMPLATE % description['round']
             return session
