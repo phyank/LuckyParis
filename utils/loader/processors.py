@@ -4,7 +4,7 @@ This module provides some commonly used processors for Item Loaders.
 See documentation in docs/topics/loaders.rst
 """
 
-from .misc import arg_to_iter, MergeDict
+from ..misc import arg_to_iter, MergeDict
 from .common import wrap_loader_context
 
 

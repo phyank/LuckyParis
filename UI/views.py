@@ -1,6 +1,8 @@
 from jinja2 import Template
 import os
 
+from login.session import SummerSession
+
 from database.mainDB import MainDB
 
 TEST_PAGE="""<!DOCTYPE html>
@@ -35,6 +37,15 @@ DEFAULT_ERROR_MESSAGE = """\
     </body>
 </html>
 """
+# class TestMainDB:
+#     def get_summer_course(self):
+#         return{"dicts":[{"B":"BBB","C":"CCC","D":"DDD","E":"EEE"},
+#                {"B":"BBB","C":"CCC","D":"DDD","E":"EEE"},
+#                {"B": "BBB", "C": "CCC", "D": "DDD", "E": "EEE"}]}
+#     def search(self,keyword):
+#         return {"dicts":[{"B":keyword,"C":keyword,"D":keyword,"E":keyword}]}
+
+
 
 class FileOpeningError:
     pass
@@ -45,6 +56,7 @@ class UIStatus:
 
         self.username=""
         self.password=""
+        self.session =0
 
 class ViewsResponse:
     def __init__(self, content, head={}, status=200):
@@ -57,6 +69,7 @@ class ViewsResponse:
             self.head["Content-Length"]=str(len(self.content))
 
 
+
 class ViewsRedirect(ViewsResponse):
     def __init__(self,url="/"):
         ViewsResponse.__init__(self,"",head={"Location":url},status=301)
@@ -64,6 +77,7 @@ class ViewsRedirect(ViewsResponse):
 
 uiStatus=UIStatus()
 db=MainDB()
+
 
 
 def open_file_as_string(filepath):
@@ -97,10 +111,12 @@ def command_selector(command,method,data):
         return search(method, data)
 
     elif command=="/logout":
+        print("logout")
         return logout(method,data)
 
 
     else:
+        print("return")
         return
 
 
@@ -110,7 +126,7 @@ def index(method,data):
     if method=="GET":
         if uiStatus.ifLogIn:
             indexT=Template(open_file_as_string('/static/template/index.html'))
-            db_data=db.get_summer_course()
+            db_data=db.search("-all")
             result=indexT.render(db_data)
             return ViewsResponse(result)
 
@@ -125,7 +141,7 @@ def login(method,data):
     elif method=="GET":
         return ViewsResponse(open_file_as_string("/static/template/login.html"))
     elif method=="POST":
-        #TODO: Check
+        uiStatus.session=SummerSession(data['user'],data['pass'])
         uiStatus.username,uiStatus.password = data['user'],data['pass']
         uiStatus.ifLogIn = True
         return ViewsRedirect("/")

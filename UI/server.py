@@ -152,3 +152,10 @@ class MyRequestHandler(BaseHTTPRequestHandler):
 class LPServer(HTTPServer):
     def __init__(self,addr, port, bind_and_active=True):
         HTTPServer.__init__(self,(addr,port),MyRequestHandler,bind_and_active)
+
+
+def test():
+    svr = LPServer("", 8080)
+    svr.serve_forever()
+
+test()

@@ -2,7 +2,7 @@ from parsel import Selector
 from .items import Course
 
 from abc import ABCMeta, abstractmethod
-from .loader import ItemLoader
+from ..utils.loader import ItemLoader
 import json
 import logging
 
@@ -44,10 +44,10 @@ class LessonParser(Parser):
             ld.add_xpath('hours', './td[5]')
             ld.add_xpath('max_member', './td[6]')
             ld.add_xpath('min_member', './td[7]')
-            ld.add_xpath('now_member', './td[8]')
+            ld.add_xpath('now_member', './td[9]')
             ld.add_xpath('time', './td[10]')
             ld.add_xpath('remark', './td[11]')
-            ld.add_value('asp', json.dumps(self.get_asp_args()))
+            ld.add_value('asp', self.get_asp_args())
             yield vars(ld.load_item())['_values']
 
 

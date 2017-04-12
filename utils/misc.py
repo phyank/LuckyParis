@@ -1,4 +1,4 @@
-from .item import BaseItem
+from .loader.item import BaseItem
 
 import inspect
 from functools import partial

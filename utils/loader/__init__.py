@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 from .item import Item
-from .misc import arg_to_iter, flatten
+from ..misc import arg_to_iter, flatten
 from parsel import Selector
 
 from .common import wrap_loader_context

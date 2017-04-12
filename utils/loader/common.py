@@ -1,4 +1,4 @@
-from .misc import get_func_args
+from ..misc import get_func_args
 
 from functools import partial
 

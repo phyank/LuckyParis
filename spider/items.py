@@ -1,8 +1,7 @@
-from .loader.item import Field, Item
-from .loader.processors import MapCompose, TakeFirst
+from ..utils.loader.item import Field, Item
+from ..utils.loader.processors import MapCompose, TakeFirst
 
 from w3lib.html import remove_tags
-import json
 import re
 
 
@@ -38,7 +37,7 @@ class Course(Item):
                         output_processor=TakeFirst())
     time = Field(input_processor=MapCompose(remove_tags,
                                             lambda s:
-                                            json.dumps(list(parse_time((s))))),
+                                            list(parse_time((s)))),
                  output_processor=TakeFirst())
     cid = Field(input_processor=MapCompose(remove_tags, lambda s: re.search('\w{2}\d{3}', s).group(0)),
                 output_processor=TakeFirst())
@@ -52,9 +51,6 @@ class Course(Item):
                        output_processor=TakeFirst())
     remark = Field(input_processor=MapCompose(remove_tags, str.strip),
                    output_processor=TakeFirst())
-    course_type = Field(output_processor=TakeFirst())
-    place = Field(input_processor=TakeFirst())
     bsid = Field(input_processor=lambda s: int(s[0]),
                  output_processor=TakeFirst())
-    asp = Field(input_processor=MapCompose(remove_tags, str.strip),
-                output_processor=TakeFirst())
+    asp = Field(output_processor=TakeFirst())
