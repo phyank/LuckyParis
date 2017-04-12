@@ -82,22 +82,24 @@ class MainDB:
         cursor = connection.cursor()
 
         if keywords == "-all":
-            cursor.execute('select name,cid,teacher,credit,type from SummerClass')
+            cursor.execute('select name,cid,teacher,credit,type,bsid from SummerClass')
             resulttuple = cursor.fetchall()
         else:
             keywords=keywords.split(" ")
 
-            command="SELECT name,cid,teacher,credit,type FROM SummerClass WHERE "+self.search_subcommand_generator(["cid","name","teacher","type"],keywords)
+            command="SELECT name,cid,teacher,credit,type,bsid FROM SummerClass WHERE "+self.search_subcommand_generator(["cid","name","teacher","type"],keywords)
 
             cursor.execute(command)
 
             resulttuple=cursor.fetchall()
 
+            print('resulttuple:',resulttuple)
+
         connection.close()
 
         result=[]
         for i in resulttuple:
-            tempdict={"name":i[0],"cid":i[1],"teacher":i[2],"credit":i[3],"type":i[4]}
+            tempdict={"name":i[0],"cid":i[1],"teacher":i[2],"credit":i[3],"type":i[4],"bsid":i[5]}
             result.append(tempdict)
 
         return {"dicts":result}

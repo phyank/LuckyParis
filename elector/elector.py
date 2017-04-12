@@ -1,13 +1,13 @@
-from ..login.session import SummerSession
-from ..spider.parsers import SummerParser
-# TODO: use relative import here
-from ..settings import (SUMMER_SUBMIT_URL, SELECT_SUMMER_COURSE_URL,
-                        COURSE_DATA_PATH, SUMMER_URL, TONGSHI_NAMES)
-
-from time import sleep
-import re
 import json
 import logging
+import re
+from time import sleep
+
+# TODO: use relative import here
+from bin.settings import (SUMMER_SUBMIT_URL, SELECT_SUMMER_COURSE_URL,
+                          COURSE_DATA_PATH, SUMMER_URL, TONGSHI_NAMES)
+from login.session import SummerSession
+from spider.parsers import SummerParser
 
 logger = logging.getLogger(__name__)
 

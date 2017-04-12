@@ -17,12 +17,20 @@
 				<div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
 					<ul class="nav navbar-nav navbar-right">
 						<li>
-							 <a href="/search">功能</a>
-						</li>
-						<li>
 							 <a href="/logout">注销</a>
 						</li>
 						<li class="dropdown">
+						<li class="dropdown">
+							 <a href="#" class="dropdown-toggle" data-toggle="dropdown">功能<strong class="caret"></strong></a>
+							<ul class="dropdown-menu">
+								<li>
+									 <a href="#">A</a>
+								</li>
+								<li>
+									 <a href="#">B</a>
+								</li>
+							</ul>
+						</li>
 							 <a href="#" class="dropdown-toggle" data-toggle="dropdown">帮助<strong class="caret"></strong></a>
 							<ul class="dropdown-menu">
 								<li>
@@ -82,7 +90,7 @@
                 <tbody>
                 {% for i in dicts %}
                 <tr style="height: 5px">
-                    <td><input type="radio" style="width:20px"></td>
+                    <td><input type="radio" style="width:20px" onclick="javascript:ele_class({{ i.bsid }});"></td>
                     <td>{{ i.name }}</td>
                     <td>{{ i.cid }}</td>
                     <td>{{ i.teacher }}</td>
@@ -100,8 +108,20 @@
         </div>
     </div>
 </div>
-
+<form id='controlForm' hidden="true" method='post' action='/control'>
+<input type="hidden" name='controlcommand' id='bsid'/>
+</form>
+<script>
+function ele_class(selectedbsid) {
+	form=document.getElementById('controlForm')
+	bsid=document.getElementById('bsid')
+	
+	bsid.value=selectedbsid
+	form.submit()
+}
+</script>
 <script src="/static/js/jquery.min.js"></script>
 <script src="/static/js/bootstrap.min.js"></script>
+
 </body>
 </html>

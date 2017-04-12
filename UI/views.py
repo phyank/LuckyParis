@@ -1,6 +1,8 @@
 from jinja2 import Template
 import os
 
+from database.load import *
+
 from login.session import SummerSession
 
 from database.mainDB import MainDB
@@ -78,6 +80,7 @@ class ViewsRedirect(ViewsResponse):
 uiStatus=UIStatus()
 db=MainDB()
 
+db.load_data(loaddata())
 
 
 def open_file_as_string(filepath):
@@ -101,6 +104,9 @@ def command_selector(command,method,data):
     if command=="/test":
         return test(method,data)
 
+    elif command=="/control":
+        return control(method,data)
+
     elif command=="/":
         return index(method,data)
 
@@ -111,7 +117,6 @@ def command_selector(command,method,data):
         return search(method, data)
 
     elif command=="/logout":
-        print("logout")
         return logout(method,data)
 
 
@@ -167,6 +172,11 @@ def search(method,data):
             result = searchT.render(db_result)
             return ViewsResponse(result)
 
+def control(method,data):
+    if method=="POST":
+        print(data['controlcommand'])
+    return ViewsRedirect("/")
+
 def test(method,data):
 
     if method=="POST":
@@ -183,5 +193,7 @@ def test(method,data):
             return ViewsResponse(c)
     else:
         return ViewsRedirect('/css/test.css')
+
+print("Views loaded")
 
 

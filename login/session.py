@@ -1,19 +1,20 @@
 # factory
-from ..settings import (SELECT_SUMMER_COURSE_URL, NORMAL_CHECK_URL_TEMPLATE,
-                       ELE_LOGIN_URL, SUMMER_CHECK_URL_TEMPLATE, JACCOUNT_URL,
-                       CACHE_SESSION_PATH)
-
-from urllib.parse import unquote
-from time import sleep
-from functools import wraps
-from PIL import Image
-from io import BytesIO
-from pytesseract import image_to_string
-import requests
 import logging
-import re
-import pickle
 import os
+import pickle
+import re
+from functools import wraps
+from io import BytesIO
+from time import sleep
+from urllib.parse import unquote
+
+import requests
+from PIL import Image
+from pytesseract import image_to_string
+
+from bin.settings import (NORMAL_CHECK_URL_TEMPLATE,
+                          ELE_LOGIN_URL, SUMMER_CHECK_URL_TEMPLATE, JACCOUNT_URL,
+                          CACHE_SESSION_PATH)
 
 logger = logging.getLogger(__name__)
 
