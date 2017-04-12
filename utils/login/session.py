@@ -1,5 +1,7 @@
-from ..settings import (SELECT_COURSE_URL, NORMAL_CHECK_URL_TEMPLATE,
-                       ELE_LOGIN_URL, SUMMER_CHECK_URL_TEMPLATE, JACCOUNT_URL)
+# factory
+from .settings import (SELECT_COURSE_URL, NORMAL_CHECK_URL_TEMPLATE,
+                       ELE_LOGIN_URL, SUMMER_CHECK_URL_TEMPLATE, JACCOUNT_URL,
+                       CACHE_SESSION_PATH)
 
 from urllib.parse import unquote
 from time import sleep
@@ -11,8 +13,9 @@ import requests
 import logging
 import re
 import pickle
+import os
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class Session(object):
@@ -33,7 +36,7 @@ class Session(object):
                 yield match.groups()
 
         try:
-            with open('/tmp/session.pickle', 'rb') as f:
+            with open(CACHE_SESSION_PATH, 'rb') as f:
                 # TODO: Verify the sesion is not out dated.
                 self.raw_session = pickle.load(f)
         except FileNotFoundError:
@@ -55,7 +58,7 @@ class Session(object):
                     JACCOUNT_URL+'ulogin', data=form)
                 if '教学信息服务网' in post_response.text:
                     logger.info("Login succeeded!")
-                    with open("/tmp/session.pickle", 'wb') as f:
+                    with open(CACHE_SESSION_PATH, 'wb') as f:
                         pickle.dump(self.raw_session, f)
                     return
                 else:
@@ -70,7 +73,8 @@ class Session(object):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
             response = func(self, *args, **kwargs)
-            response.raise_for_status()
+            # if response.status_code != 404:
+            #     response.raise_for_status()
             while True:
                 try:
                     if 'outTimePage.aspx' in response.url:
@@ -80,6 +84,9 @@ class Session(object):
                     message = unquote(response.url.split('message=')[1])
                     if '刷新' in message:
                         sleep(self.SLEEP_DURATION)
+                    elif '冲突' in message:
+                        self.refresh()
+                        continue
                     else:
                         logger.debug(message)
                     response = func(self, *args, **kwargs)
@@ -101,15 +108,16 @@ class Session(object):
         return self.raw_session.head(*args, **kwargs)
 
     def refresh(self):
+        try:
+            os.remove(CACHE_SESSION_PATH)
+        except FileNotFoundError:
+            pass
         self._login()
         self.head(self.CHECK_URL)
 
-    def select_course(self, bsid, asp_dict):
-        return self.post(url=SELECT_COURSE_URL,
-                         data={'LessonTime1$btnChoose': '选定此教师',
-                               'myradiogroup': bsid},
-                         asp_dict=asp_dict)
-
+class SummerSession(Session):
+    CHECK_URL = SUMMER_CHECK_URL_TEMPLATE % 2
+    SLEEP_DURATION = 2
 
 # FIXME: This should be a singleton.
 class SessionFactory(object):
