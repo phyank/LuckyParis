@@ -83,6 +83,7 @@ def open_file_as_string(filepath):
 
 
 def command_selector(command,method,data):
+
     if command=="/test":
         return test(method,data)
 
@@ -98,8 +99,6 @@ def command_selector(command,method,data):
     elif command=="/logout":
         return logout(method,data)
 
-    #elif command=="/search"
-    #    return search(method,data)
 
     else:
         return
@@ -117,14 +116,20 @@ def index(method,data):
 
         else:
             return ViewsRedirect("/login")
+    else:
+        return ViewsRedirect("/")
 
 def login(method,data):
-    if method=="GET":
+    if uiStatus.ifLogIn:
+        return ViewsRedirect("/")
+    elif method=="GET":
         return ViewsResponse(open_file_as_string("/static/template/login.html"))
-    if method=="POST":
+    elif method=="POST":
         #TODO: Check
         uiStatus.username,uiStatus.password = data['user'],data['pass']
         uiStatus.ifLogIn = True
+        return ViewsRedirect("/")
+    else:
         return ViewsRedirect("/")
 
 def logout(method,data):
@@ -133,14 +138,18 @@ def logout(method,data):
     return ViewsRedirect("/login")
 
 def search(method,data):
+
     if method == "GET":
         return ViewsRedirect("/")
 
     else:
-        db_result = db.search(data["keywords"])
-        searchT = Template(open_file_as_string('/static/template/index.html'))
-        result = searchT.render(db_result)
-        return ViewsResponse(result)
+        if not data["keywords"]:
+            return ViewsRedirect("/")
+        else:
+            db_result = db.search(data["keywords"])
+            searchT = Template(open_file_as_string('/static/template/index.html'))
+            result = searchT.render(db_result)
+            return ViewsResponse(result)
 
 def test(method,data):
 
