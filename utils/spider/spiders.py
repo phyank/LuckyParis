@@ -47,22 +47,6 @@ class Spider(object, metaclass=ABCMeta):
         for info in self.crawl_by_course_id(course_id):
             yield {info['bsid']: info['now_number']}
 
-    def grab_course_by_bsid(self, bsid):
-        ''' 给定bsid，持续选，直到成功。
-            什么情况都不报错。
-            课满了不报错，session或者__VIEWSTATE过期了更新一下继续刷，也不报错
-        '''
-        while True:
-            response = self.session.select_course(bsid)
-            if response.url == self.url:
-                self._submit()
-                return True
-
-    def _submit(self):
-        ''' 进行选课提交
-        '''
-        self.session.head(self.SUBMIT_URL)
-
     @abstractmethod
     def crawl_one_course_by_course_id(self, course_id):
         ''' 根据课程代码爬课的信息
