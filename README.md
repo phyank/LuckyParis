@@ -9,7 +9,7 @@ scrapy and parsel--爬虫
 
 requests——会话控制
 
-jinjia2--网页模板引擎，可自己实现
+jinja2--网页模板引擎，可自己实现
 
 pytesseract——验证码识别，非必要
 
