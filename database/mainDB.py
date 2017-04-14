@@ -99,7 +99,7 @@ class MainDB:
 
             resulttuple=cursor.fetchall()
 
-            print('resulttuple:',resulttuple)
+
 
         connection.close()
 

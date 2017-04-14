@@ -112,6 +112,7 @@ class Session(object):
 
     @_tackle_frequent_requests_error
     def get(self, *args, **kwargs):
+        print("session.get")
         return self.raw_session.get(*args, **kwargs)
 
     @_tackle_frequent_requests_error

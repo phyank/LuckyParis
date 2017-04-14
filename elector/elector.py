@@ -28,7 +28,6 @@ class SummerElector(object):
         self.mutex=mutex
         self.session = session
         self.db=mainDBdict
-        print (mainDBdict[1])
         self.mainStatus=mainStatus
         self.asp_dict = SummerParser(self.session.get(self.URL)).get_asp_args()
         self.seen_available = set()
@@ -73,27 +72,36 @@ class SummerElector(object):
     def _submit(self):
         ''' 进行选课提交
         '''
+        print("submit")
         submit_response = self.session.post(url=self.SUBMIT_URL,
                                             data={'btnSubmit': '选课提交'},
                                             asp_dict=self.asp_dict)
-        return self.session.get(submit_response.url)
+        print("get response,url:"+submit_response.url)
+        result=self.session.get(submit_response.url)
+        print("get result")
+        return result
 
     #FIXME:if self.URL in url
     def select_course_by_bsid(self, bsid):
         self._select_course_by_bsid(bsid)
         url=self._submit()
+        print("Here")
+
         with self.mutex:
             if self.URL in url:
                 self.mainStatus.electorStatus=2
                 self.mainStatus.electorMessage='%s submit success' % bsid
+                self.mainStatus.electorRetryCounter=0
                 self.mainStatus.messageToUI = '%s submit success' % bsid
                 #logger.info('%s submit success' % bsid)
-                return True
+                thereturn= True
             else:
                 self.mainStatus.electorStatus=3
                 self.mainStatus.electorMessage='%s submit failed' % bsid
+                self.mainStatus.electorRetryCounter+=1
                 #logger.info('%s submit failed' % bsid)
-                return False
+                thereturn = False
+        return thereturn
 
     def get_asp_by_bsid(self, bsid):
         for record in self.db:
@@ -102,6 +110,7 @@ class SummerElector(object):
         raise KeyError("bsid %s not found in database." % bsid)
 
     def _select_course_by_bsid(self, bsid):
+        print("innerget")
         return self.session.post(
             url=SELECT_SUMMER_COURSE_URL,
             data={'LessonTime1$btnChoose':

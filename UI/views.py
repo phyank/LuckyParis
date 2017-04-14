@@ -35,6 +35,7 @@ class MainStatus:
 
         self.electorThread = 0
         self.electorStatus = 0
+        self.electorRetryCounter=0
         self.electorMessage = ""
 
         self.username = ""
@@ -52,9 +53,20 @@ class ThreadingElector(threading.Thread):
         self.mutex=mutex
         threading.Thread.__init__(self)
         self.elector=SummerElector(session,mainStatus,mainDBdict,mutex)
+        print("Thread init.")
     def run(self):
-        while not self.elector.select_course_by_bsid(self.bsid):
-            pass
+        if self.bsid=='-all':
+            self.elector.run()
+        else:
+            while True:
+                print("One trial")
+                ifSuccess=self.elector.select_course_by_bsid(self.bsid)
+                print("Trial end")
+                if ifSuccess:
+                    print("Thread exit.")
+                    with self.mutex:
+                        self.mainStatus.electorStatus=0
+                    break
 
 mainStatus=MainStatus()
 mainStatusMutex=threading.Lock()
@@ -250,6 +262,7 @@ def search(method,data):
 def control(method,data):
     if method=="POST":
         command=data['ctlcmd']
+        target=''
         if data['value']:
             target=int(data['value'])
         if command=="electbybsid":
@@ -259,6 +272,11 @@ def control(method,data):
             thread.start()
         if command=="exit":
             os._exit(0)
+        if command=='selectall':
+            thread=ThreadingElector("-all",mainStatus.session,mainStatus,db.dbdict,mainStatusMutex)
+            with mainStatusMutex:
+                mainStatus.electorThread=thread
+            thread.start()
         else:
             pass
 
@@ -271,6 +289,7 @@ def ajax_interact(method,data):
         responsedict['loginmessage']=mainStatus.logInMessage
         responsedict['electorstatus']=mainStatus.electorStatus
         responsedict['electormessage']=mainStatus.electorMessage
+        responsedict['retrycounter']=mainStatus.electorRetryCounter
         responsedict['messagetoui']=mainStatus.messageToUI
     return ViewsAjaxResponse(responsedict)
 
