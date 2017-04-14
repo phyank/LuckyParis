@@ -1,5 +1,5 @@
 # FIXME Replace HtmlResponse with lxml or something for performance.
-from ..settings import SUMMER_URL, SUMMER_SUBMIT_URL
+from bin.settings import SUMMER_URL, SUMMER_SUBMIT_URL
 from .parsers import LessonParser, SummerParser
 
 from abc import ABCMeta, abstractmethod
