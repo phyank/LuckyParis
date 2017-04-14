@@ -88,10 +88,12 @@ class SummerElector(object):
                 self.mainStatus.electorMessage='%s submit success' % bsid
                 self.mainStatus.messageToUI = '%s submit success' % bsid
                 #logger.info('%s submit success' % bsid)
+                return True
             else:
                 self.mainStatus.electorStatus=3
                 self.mainStatus.electorMessage='%s submit failed' % bsid
                 #logger.info('%s submit failed' % bsid)
+                return False
 
     def get_asp_by_bsid(self, bsid):
         for record in self.db:

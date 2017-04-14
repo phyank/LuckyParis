@@ -53,7 +53,8 @@ class ThreadingElector(threading.Thread):
         threading.Thread.__init__(self)
         self.elector=SummerElector(session,mainStatus,mainDBdict,mutex)
     def run(self):
-        self.elector.select_course_by_bsid(self.bsid)
+        while not self.elector.select_course_by_bsid(self.bsid):
+            pass
 
 mainStatus=MainStatus()
 mainStatusMutex=threading.Lock()
