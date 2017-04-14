@@ -1,8 +1,8 @@
 #! /usr/bin/env python3
 
-import json
+import json,os
 def loaddata():
-    with open('/home/hiro/LuckyParis/database/course.json') as f:
+    with open(os.path.dirname(__file__)+'/../database/course.json') as f:
         data = json.load(f)
         return data
 
