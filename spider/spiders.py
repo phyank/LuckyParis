@@ -1,11 +1,10 @@
 # FIXME Replace HtmlResponse with lxml or something for performance.
-import logging
-from abc import ABCMeta, abstractmethod
-
-import requests
-
-from bin.settings import SUMMER_URL, SUMMER_SUBMIT_URL
+from ..settings import SUMMER_URL, SUMMER_SUBMIT_URL
 from .parsers import LessonParser, SummerParser
+
+from abc import ABCMeta, abstractmethod
+import logging
+import requests
 
 logger = logging.getLogger(__name__)
 

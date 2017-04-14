@@ -1,6 +1,8 @@
 from UI.server import *
 import webbrowser
 
+
+
 def setup():
     svr = LPServer("", 8080)
 

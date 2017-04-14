@@ -1,34 +1,36 @@
 # factory
-import logging
-import os
-import pickle
-import re
-from functools import wraps
-from io import BytesIO
-from time import sleep
-from urllib.parse import unquote
-
-import requests
-from PIL import Image
-from pytesseract import image_to_string
-
 from bin.settings import (NORMAL_CHECK_URL_TEMPLATE,
-                          ELE_LOGIN_URL, SUMMER_CHECK_URL_TEMPLATE, JACCOUNT_URL,
-                          CACHE_SESSION_PATH)
+                       ELE_LOGIN_URL, SUMMER_CHECK_URL_TEMPLATE, JACCOUNT_URL,
+                       CACHE_SESSION_PATH)
+
+from urllib.parse import unquote
+from time import sleep
+from functools import wraps
+from PIL import Image
+from io import BytesIO
+from pytesseract import image_to_string
+import requests
+import logging
+import re
+import pickle
+import os
 
 logger = logging.getLogger(__name__)
 
-
+#FIXME:Use mainStatus to report, No printing.
 class Session(object):
     MAX_LOGIN_TRAIL = 10
     ''' 包装requests.session，进行登录后的验证和处理教务网的message和session过期
     '''
     # Abstract base class needing CHECK_URL.
-    def __init__(self, username, password):
+    def __init__(self, username, password, mainStatus, mainStatusmutex):
+        self.mainStatus=mainStatus
+        self.mutex=mainStatusmutex
         self.username = username
         self.password = password
         self._refresh()
-        logger.debug("Session object initialization complete.")
+        with self.mutex:
+            self.mainStatus.logInStatus=1
 
     def _login(self):
         def __parse_jaccount_page(html):
@@ -58,39 +60,52 @@ class Session(object):
                 post_response = self.raw_session.post(
                     JACCOUNT_URL+'ulogin', data=form)
                 if '教学信息服务网' in post_response.text:
-                    logger.info("Login succeeded!")
+                    with self.mutex:
+                        self.mainStatus.logInStatus=2
+                    #logger.info("Login succeeded!")
                     with open(CACHE_SESSION_PATH, 'wb') as f:
                         pickle.dump(self.raw_session, f)
                     return
                 else:
-                    logger.warning("The %d attempt to login failed ..." % try_count)
-            logger.error("Login failed...")
-            print("Are you sure about the username and password?")
-            exit(1)
+                    with self.mutex:
+                        self.mainStatus.logInStatus=3
+                    #logger.warning("The %d attempt to login failed ..." % try_count)
+                    # 每30秒才能登录一次
+                    sleep(30)
+            with self.mutex:
+                self.mainStatus.logInStatus=4
+            #logger.error("Login failed...")
+            raise ValueError("username or password incorrect")
 
     def _tackle_frequent_requests_error(func):
         ''' 处理页面过期和频繁刷新页面的提示
         '''
         @wraps(func)
         def wrapper(self, *args, **kwargs):
-            response = func(self, *args, **kwargs)
             # if response.status_code != 404:
             #     response.raise_for_status()
             while True:
+                response = func(self, *args, **kwargs)
                 try:
                     if 'outTimePage.aspx' in response.url:
+                        with self.mutex:
+                            self.mainStatus.logInStatus=5
                         self.refresh()
-                        logger.error('Session outdated.')
+                        #logger.error('Session outdated.')
                         continue
                     message = unquote(response.url.split('message=')[1])
                     if '刷新' in message:
                         sleep(self.SLEEP_DURATION)
+                    # FIXME: don't select when there's a conflict. Instead of
+                    # refresh.
                     elif '冲突' in message:
                         self.refresh()
                         continue
                     else:
-                        logger.debug(message)
-                    response = func(self, *args, **kwargs)
+                        with self.mutex:
+                            self.mainStatus.logInStatus=6
+                            self.mainStatus.logInMessage=message
+                        #logger.debug(message)
                 except IndexError:
                     return response
         return wrapper

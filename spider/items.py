@@ -1,5 +1,5 @@
-from ..utils.loader.item import Field, Item
-from ..utils.loader.processors import MapCompose, TakeFirst
+from utils.loader.item import Field, Item
+from utils.loader.processors import MapCompose, TakeFirst
 
 from w3lib.html import remove_tags
 import re

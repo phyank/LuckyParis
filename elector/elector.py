@@ -1,26 +1,37 @@
-import json
-import logging
-import re
-from time import sleep
-
-# TODO: use relative import here
-from bin.settings import (SUMMER_SUBMIT_URL, SELECT_SUMMER_COURSE_URL,
-                          COURSE_DATA_PATH, SUMMER_URL, TONGSHI_NAMES)
 from login.session import SummerSession
 from spider.parsers import SummerParser
+# TODO: use relative import here
+from bin.settings import (SUMMER_SUBMIT_URL, SELECT_SUMMER_COURSE_URL,
+                        COURSE_DATA_PATH, SUMMER_URL, TONGSHI_NAMES)
+
+from time import sleep
+import re
+import json
+import logging
 
 logger = logging.getLogger(__name__)
+cid_logger = logging.getLogger('cid')
+fh = logging.FileHandler('/tmp/course_record.log')
+fh.setLevel(logging.INFO)
+fh.setFormatter(logging.Formatter('[+] %(asctime)s - %(message)s'))
+cid_logger.addHandler(fh)
 
+cid_logger.error('Logger Started.')
 
+#FIXME:Use mainStatus to report, No printing.
 # FIXME: add a factory and refactor it with spider.
 class SummerElector(object):
     SUBMIT_URL = SUMMER_SUBMIT_URL
     URL = SUMMER_URL
     SLEEP_DURATION = 2
-    def __init__(self, username, password):
-        self.session = SummerSession(username, password)
-        self._load_db()
+    def __init__(self,session,mainStatus,mainDBdict,mutex):
+        self.mutex=mutex
+        self.session = session
+        self.db=mainDBdict
+        print (mainDBdict[1])
+        self.mainStatus=mainStatus
         self.asp_dict = SummerParser(self.session.get(self.URL)).get_asp_args()
+        self.seen_available = set()
 
     def get_non_full_tongshi_cid(self, wanted_types=TONGSHI_NAMES):
         sleep(self.SLEEP_DURATION)
@@ -32,8 +43,16 @@ class SummerElector(object):
                 is_full = re.search(r'人数(\w+)\s*\</td\>', is_full).group(1) \
                     == '满'
                 if ctype.strip() in wanted_types and not is_full:
-                    if cid != 'LA936':
+                    if False:
                         yield cid
+
+                # data logger
+                if cid not in self.seen_available and not is_full:
+                    self.seen_available.add(cid)
+                    cid_logger.info('%s is available' % cid)
+                elif cid in self.seen_available and is_full:
+                    self.seen_available.remove(cid)
+                    cid_logger.info('%s is full' % cid)
             except AttributeError:
                 pass
 
@@ -59,12 +78,20 @@ class SummerElector(object):
                                             asp_dict=self.asp_dict)
         return self.session.get(submit_response.url)
 
+    #FIXME:if self.URL in url
     def select_course_by_bsid(self, bsid):
         self._select_course_by_bsid(bsid)
-        if self.URL in self._submit().url:
-            logger.info('%s submit success' % bsid)
-        else:
-            logger.info('%s submit failed' % bsid)
+        url=self._submit()
+        with self.mutex:
+            if self.URL in url:
+                self.mainStatus.electorStatus=2
+                self.mainStatus.electorMessage='%s submit success' % bsid
+                self.mainStatus.messageToUI = '%s submit success' % bsid
+                #logger.info('%s submit success' % bsid)
+            else:
+                self.mainStatus.electorStatus=3
+                self.mainStatus.electorMessage='%s submit failed' % bsid
+                #logger.info('%s submit failed' % bsid)
 
     def get_asp_by_bsid(self, bsid):
         for record in self.db:
@@ -77,8 +104,9 @@ class SummerElector(object):
             url=SELECT_SUMMER_COURSE_URL,
             data={'LessonTime1$btnChoose':
                   '选定此教师', 'myradiogroup': bsid},
-            asp_dict=json.loads(self.get_asp_by_bsid(bsid)))
+            asp_dict=self.get_asp_by_bsid(bsid))
 
+    #FIXME:Use mainStatus to report, No printing.
     def run(self, wanted_types=TONGSHI_NAMES):
         logger.debug('Elector Started...')
         while True:

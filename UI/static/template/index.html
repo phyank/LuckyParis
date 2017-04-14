@@ -7,6 +7,8 @@
       <link href="/static/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
+<script src="/static/js/jquery.min.js"></script>
+<script src="/static/js/bootstrap.min.js"></script>
 <div class="container">
 	<div class="row clearfix">
 		<div class="col-md-12 column">
@@ -20,17 +22,17 @@
 							 <a href="/logout">注销</a>
 						</li>
 						<li class="dropdown">
-						<li class="dropdown">
 							 <a href="#" class="dropdown-toggle" data-toggle="dropdown">功能<strong class="caret"></strong></a>
 							<ul class="dropdown-menu">
 								<li>
-									 <a href="#">A</a>
+									 <a href="javascript:alertall();">查看所有信息</a>
 								</li>
 								<li>
-									 <a href="#">B</a>
+									 <a href="javascript:allexit();">退出</a>
 								</li>
 							</ul>
 						</li>
+						<li class="dropdown">
 							 <a href="#" class="dropdown-toggle" data-toggle="dropdown">帮助<strong class="caret"></strong></a>
 							<ul class="dropdown-menu">
 								<li>
@@ -109,19 +111,87 @@
     </div>
 </div>
 <form id='controlForm' hidden="true" method='post' action='/control'>
-<input type="hidden" name='controlcommand' id='bsid'/>
+<input type="hidden" name='value' id='cvalue'/>
+<input type="hidden" name='ctlcmd' id='ctlcmd'/>
 </form>
 <script>
-function ele_class(selectedbsid) {
-	form=document.getElementById('controlForm')
-	bsid=document.getElementById('bsid')
-	
-	bsid.value=selectedbsid
-	form.submit()
+form=document.getElementById('controlForm');
+ctlcmd=document.getElementById('ctlcmd');
+cvalue=document.getElementById('cvalue');
+function ele_class(electedbsid) {
+
+	ctlcmd.value="electbybsid";
+	cvalue.value=electedbsid;
+	form.submit();
+	alert("成功开始选课！请耐心等待。")
+}
+
+function allexit(){
+    ctlcmd.value="exit";
+    cvalue.value="";
+    form.submit();
+    window.opener=null;
+    window.open('','_self');
+    window.close();
 }
 </script>
-<script src="/static/js/jquery.min.js"></script>
-<script src="/static/js/bootstrap.min.js"></script>
+
+<script>
+var loginstatus=0;
+var loginmessage='';
+var electorstatus=0;
+var electormessage='';
+var messagetoui='';
+
+function alertall(){
+alert(" 登录状态："+loginstatus+"\n 登录信息："+loginmessage+"\n 选课状态："+electorstatus+"\n 选课信息："+electormessage+"\n 给用户的信息："+messagetoui);
+};
+
+function ajxreq(url,callback){
+this.request=new XMLHttpRequest();
+this.request.open("GET",url)
+
+var tempRequest=this.request;
+
+function reqReadyStateChange(){
+if (tempRequest.readyState == 4){
+if (tempRequest.status==200){
+callback(tempRequest.responseText);}else{
+alert("与服务器的连接出错，请重新启动程序！");}
+}}
+this.request.onreadystatechange=reqReadyStateChange;
+}
+
+ajxreq.prototype.send=function(){
+this.request.send(null);
+};
+
+function startrefresh(){
+var request=new ajxreq('/ajaxinteract',refreshdata);
+request.send();
+}
+
+function refreshdata(responseText){
+var response=JSON.parse(responseText);
+if (loginstatus!=response.loginstatus){alert("登录状态已改变! :"+response.loginstatus);};
+if (electorstatus!=response.electorstatus){
+if (response.electorstatus==2){
+alert("选课成功！"+messagetoui);
+}else
+{alert("选课状态改变，状态码："+response.electorstatus+"\n消息："+response.messagetoui);}};
+
+loginstatus=response.loginstatus;
+loginmessage=response.loginmessage;
+electorstatus=response.electorstatus;
+electormessage=response.electormessage;
+messagetoui=response.messagetoui;
+}
+
+
+setInterval(startrefresh,5000);
+
+</script>
+
 
 </body>
 </html>

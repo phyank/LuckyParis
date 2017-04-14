@@ -10,26 +10,32 @@ class MainDB:
         self.dictkeys=['bsid','name','cid','teacher','teacher_job','remark','type',\
                        'credit','hours','max_member','min_member','now_member','time','asp']
 
+        #TODO:This is a temporary change, it should be removed:
+        if os.path.exists("db.sqlite3"):
+            os.remove("db.sqlite3")
+
         self.ifExist = os.path.exists('db.sqlite3')
+
+        self.dbdict={}
 
         if not self.ifExist:
             connection = sqlite3.connect('db.sqlite3')
             cursor = connection.cursor()
             cursor.execute('''CREATE TABLE 
-                                    SummerClass(   bsid    integer key not null,
-                                                                name    nchar(15),
-                                                                cid     nchar(8),
-                                                                teacher nchar(10),
-                                                                teacher_job ntext,
-                                                                remark  ntext,
-                                                                type    nchar(5),
-                                                                credit  nchar(4),
-                                                                hours   integer,
-                                                                max_member integer,
-                                                                min_member integer,
-                                                                now_member integer,
-                                                                time    ntext,
-                                                                asp     ntext )
+                                    SummerClass(    bsid    integer key not null,
+                                                    name    nchar(15),
+                                                    cid     nchar(8),
+                                                    teacher nchar(10),
+                                                    teacher_job ntext,
+                                                    remark  ntext,
+                                                    type    nchar(5),
+                                                    credit  nchar(4),
+                                                    hours   integer,
+                                                    max_member integer,
+                                                    min_member integer,
+                                                    now_member integer,
+                                                    time    ntext,
+                                                    asp     ntext )
             ''')
 
 
@@ -106,6 +112,8 @@ class MainDB:
 
     def load_data(self,data):
 
+        self.dbdict=data
+
         connection=sqlite3.connect("db.sqlite3")
         cursor=connection.cursor()
 
@@ -147,6 +155,7 @@ class MainDB:
     # for i in loaddata():
     #     print (type(i["asp"]))
     #     print(len(i))
+
 #
 def test():
 #     subcommand = " "

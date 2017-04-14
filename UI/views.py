@@ -1,11 +1,72 @@
 from jinja2 import Template
-import os
+from elector.elector import SummerElector
+from time import sleep
+import os,json,threading
+
+from bin.settings import CACHE_SESSION_PATH
 
 from database.load import *
 
 from login.session import SummerSession
 
 from database.mainDB import MainDB
+
+
+SESSION_STATUS = {0: 'NOT_INIT', 1: 'INIT', 2: 'LOGIN_SUCCESS', 3: 'TEMPORARY_LOGIN_FAILED',
+                  4: 'FAILED_AND_QUIT', 5: 'TIME_OUT', 6: 'UNKNOWN_ERROR'}
+
+ELECTOR_STATUS = {0:'NOT_INIT',1:'INIT',2:'SUBMIT_SUCCEES',3:'SUBMIT_FAILED',4:'UNKNOWN_ERROR'}
+
+# class TestThread(threading.Thread):
+#     def __init__(self,mainStatus):
+#         self.mainStatus=mainStatus
+#         threading.Thread.__init__(self)
+#     def run(self):
+#         print("login:"+str(self.mainStatus.logInStatus))
+#         print("elector:"+str(self.mainStatus.electorStatus))
+#         sleep(5)
+
+
+class MainStatus:
+    def __init__(self):
+        self.ifLogIn = False
+        self.logInStatus = 0  # 0:not_init 1:init 2:success 3:failed 4:failed and quit 5:unknown error
+        self.logInMessage = ""
+
+        self.electorThread = 0
+        self.electorStatus = 0
+        self.electorMessage = ""
+
+        self.username = ""
+        self.password = ""
+        self.session = 0
+
+        self.messageToUI=""
+
+
+class ThreadingElector(threading.Thread):
+    def __init__(self,bsid,session,mainStatus,mainDBdict,mutex):
+        self.bsid=bsid
+        self.session=session
+        self.mainStatus=mainStatus
+        self.mutex=mutex
+        threading.Thread.__init__(self)
+        self.elector=SummerElector(session,mainStatus,mainDBdict,mutex)
+    def run(self):
+        self.elector.select_course_by_bsid(self.bsid)
+
+mainStatus=MainStatus()
+mainStatusMutex=threading.Lock()
+
+db=MainDB()
+
+db.load_data(loaddata())
+
+# tthread=TestThread(mainStatus)
+# tthread.start()
+
+
+
 
 TEST_PAGE="""<!DOCTYPE html>
 <html>
@@ -52,13 +113,7 @@ DEFAULT_ERROR_MESSAGE = """\
 class FileOpeningError:
     pass
 
-class UIStatus:
-    def __init__(self):
-        self.ifLogIn=False
 
-        self.username=""
-        self.password=""
-        self.session =0
 
 class ViewsResponse:
     def __init__(self, content, head={}, status=200):
@@ -71,16 +126,22 @@ class ViewsResponse:
             self.head["Content-Length"]=str(len(self.content))
 
 
+class ViewsAjaxResponse(ViewsResponse):
+    def __init__(self,dict):
+        ViewsResponse.__init__(self,json.dumps(dict),{})
 
 class ViewsRedirect(ViewsResponse):
     def __init__(self,url="/"):
         ViewsResponse.__init__(self,"",head={"Location":url},status=301)
 
 
-uiStatus=UIStatus()
-db=MainDB()
 
-db.load_data(loaddata())
+
+
+
+
+
+
 
 
 def open_file_as_string(filepath):
@@ -104,6 +165,9 @@ def command_selector(command,method,data):
     if command=="/test":
         return test(method,data)
 
+    elif command=="/ajaxinteract":
+        return ajax_interact(method,data)
+
     elif command=="/control":
         return control(method,data)
 
@@ -121,7 +185,6 @@ def command_selector(command,method,data):
 
 
     else:
-        print("return")
         return
 
 
@@ -129,7 +192,9 @@ def command_selector(command,method,data):
 
 def index(method,data):
     if method=="GET":
-        if uiStatus.ifLogIn:
+        with mainStatusMutex:
+            ifLogIn=mainStatus.ifLogIn
+        if ifLogIn:
             indexT=Template(open_file_as_string('/static/template/index.html'))
             db_data=db.search("-all")
             result=indexT.render(db_data)
@@ -141,21 +206,30 @@ def index(method,data):
         return ViewsRedirect("/")
 
 def login(method,data):
-    if uiStatus.ifLogIn:
+    with mainStatusMutex:
+        ifLogIn=mainStatus.ifLogIn
+    if ifLogIn:
         return ViewsRedirect("/")
     elif method=="GET":
         return ViewsResponse(open_file_as_string("/static/template/login.html"))
     elif method=="POST":
-        uiStatus.session=SummerSession(data['user'],data['pass'])
-        uiStatus.username,uiStatus.password = data['user'],data['pass']
-        uiStatus.ifLogIn = True
+        if os.path.exists(CACHE_SESSION_PATH):
+            os.remove(CACHE_SESSION_PATH)
+        session=SummerSession(data['user'],data['pass'],mainStatus,mainStatusMutex)
+        with mainStatusMutex:
+            mainStatus.session=session
+            mainStatus.username,mainStatus.password = data['user'],data['pass']
+            mainStatus.ifLogIn = True
         return ViewsRedirect("/")
     else:
         return ViewsRedirect("/")
 
 def logout(method,data):
-    uiStatus.username, uiStatus.password="",""
-    uiStatus.ifLogIn=False
+    with mainStatusMutex:
+        mainStatus.username, mainStatus.password="",""
+        mainStatus.ifLogIn=False
+    if os.path.exists(CACHE_SESSION_PATH):
+        os.remove(CACHE_SESSION_PATH)
     return ViewsRedirect("/login")
 
 def search(method,data):
@@ -174,8 +248,30 @@ def search(method,data):
 
 def control(method,data):
     if method=="POST":
-        print(data['controlcommand'])
-    return ViewsRedirect("/")
+        command=data['ctlcmd']
+        if data['value']:
+            target=int(data['value'])
+        if command=="electbybsid":
+            thread=ThreadingElector(target,mainStatus.session,mainStatus,db.dbdict,mainStatusMutex)
+            with mainStatusMutex:
+                mainStatus.electorThread=thread
+            thread.start()
+        if command=="exit":
+            os._exit(0)
+        else:
+            pass
+
+    return ViewsResponse("",{},304)
+
+def ajax_interact(method,data):
+    responsedict={}
+    with mainStatusMutex:
+        responsedict['loginstatus']=mainStatus.logInStatus
+        responsedict['loginmessage']=mainStatus.logInMessage
+        responsedict['electorstatus']=mainStatus.electorStatus
+        responsedict['electormessage']=mainStatus.electorMessage
+        responsedict['messagetoui']=mainStatus.messageToUI
+    return ViewsAjaxResponse(responsedict)
 
 def test(method,data):
 
@@ -194,6 +290,6 @@ def test(method,data):
     else:
         return ViewsRedirect('/css/test.css')
 
-print("Views loaded")
+
 
 

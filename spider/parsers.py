@@ -1,8 +1,8 @@
 from parsel import Selector
-from .items import Course
+from spider.items import Course
 
 from abc import ABCMeta, abstractmethod
-from ..utils.loader import ItemLoader
+from utils.loader import ItemLoader
 import json
 import logging
 
