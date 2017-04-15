@@ -62,15 +62,18 @@ class Session(object):
                 if '教学信息服务网' in post_response.text:
                     with self.mutex:
                         self.mainStatus.logInStatus=2
+                        self.mainStatus.logInMessage="Login succeeded!"
                     #logger.info("Login succeeded!")
-                    with open(CACHE_SESSION_PATH, 'wb') as f:
-                        pickle.dump(self.raw_session, f)
+                    # with open(CACHE_SESSION_PATH, 'wb') as f:
+                    #     pickle.dump(self.raw_session, f)
                     return
                 else:
                     with self.mutex:
                         self.mainStatus.logInStatus=3
+                        self.mainStatus.logInMessage="The %d attempt to login failed ...Sleeping..." % try_count
                     #logger.warning("The %d attempt to login failed ..." % try_count)
                     # 每30秒才能登录一次
+
                     sleep(30)
             with self.mutex:
                 self.mainStatus.logInStatus=4
@@ -112,7 +115,6 @@ class Session(object):
 
     @_tackle_frequent_requests_error
     def get(self, *args, **kwargs):
-        print("session.get")
         return self.raw_session.get(*args, **kwargs)
 
     @_tackle_frequent_requests_error

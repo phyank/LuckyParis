@@ -9,6 +9,8 @@ import re
 import json
 import logging
 
+from spider.parsers import ElectorParser
+
 logger = logging.getLogger(__name__)
 cid_logger = logging.getLogger('cid')
 fh = logging.FileHandler('/tmp/course_record.log')
@@ -72,36 +74,40 @@ class SummerElector(object):
     def _submit(self):
         ''' 进行选课提交
         '''
-        print("submit")
         submit_response = self.session.post(url=self.SUBMIT_URL,
                                             data={'btnSubmit': '选课提交'},
                                             asp_dict=self.asp_dict)
-        print("get response,url:"+submit_response.url)
         result=self.session.get(submit_response.url)
-        print("get result")
         return result
 
     #FIXME:if self.URL in url
     def select_course_by_bsid(self, bsid):
-        self._select_course_by_bsid(bsid)
-        url=self._submit()
-        print("Here")
 
+        self._select_course_by_bsid(bsid)
+        result=self._submit()
+
+        url=result.url
+
+        parser=ElectorParser()
+        parser.feed(result.text)
+
+
+        if self.URL in url:
+            for i in parser.tablehref:
+                if str(bsid) in i:
+                    with self.mutex:
+                        self.mainStatus.electorStatus=2
+                        self.mainStatus.electorMessage='%s submit success' % bsid
+                        self.mainStatus.electorRetryCounter=0
+                        self.mainStatus.messageToUI = '%s submit success' % bsid
+                    #logger.info('%s submit success' % bsid)
+                    return True
         with self.mutex:
-            if self.URL in url:
-                self.mainStatus.electorStatus=2
-                self.mainStatus.electorMessage='%s submit success' % bsid
-                self.mainStatus.electorRetryCounter=0
-                self.mainStatus.messageToUI = '%s submit success' % bsid
-                #logger.info('%s submit success' % bsid)
-                thereturn= True
-            else:
-                self.mainStatus.electorStatus=3
-                self.mainStatus.electorMessage='%s submit failed' % bsid
-                self.mainStatus.electorRetryCounter+=1
-                #logger.info('%s submit failed' % bsid)
-                thereturn = False
-        return thereturn
+            self.mainStatus.electorStatus=3
+            self.mainStatus.electorMessage='%s submit failed' % bsid
+            self.mainStatus.electorRetryCounter+=1
+        #logger.info('%s submit failed' % bsid)
+        return False
 
     def get_asp_by_bsid(self, bsid):
         for record in self.db:
@@ -110,7 +116,6 @@ class SummerElector(object):
         raise KeyError("bsid %s not found in database." % bsid)
 
     def _select_course_by_bsid(self, bsid):
-        print("innerget")
         return self.session.post(
             url=SELECT_SUMMER_COURSE_URL,
             data={'LessonTime1$btnChoose':

@@ -6,6 +6,8 @@ from utils.loader import ItemLoader
 import json
 import logging
 
+from html.parser import HTMLParser
+
 logger = logging.getLogger()
 
 
@@ -65,6 +67,26 @@ class SpiderParser(Parser):
 
 class SummerParser(SpiderParser):
     pass
+
+class ElectorParser(HTMLParser):
+    def __init__(self):
+        self.tablehref=[]
+        self.ifInTable=False
+        self.ifInA=False
+        HTMLParser.__init__(self)
+
+    def handle_starttag(self, tag, attrs):
+        if tag=="span" and attrs:
+            for (variable, value) in attrs:
+                if variable=="id":
+                    if value == "LessonTbl1_span1":
+                        self.ifInTable=True
+                    elif value == "LessonTbl1_spanContent":
+                        self.ifInTable=False
+        elif self.ifInTable and tag=="a" and attrs:
+            for (variable,value) in attrs:
+                if variable=="href":
+                    self.tablehref.append(value)
 
 
 # TODO

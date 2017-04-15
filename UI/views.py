@@ -17,15 +17,6 @@ SESSION_STATUS = {0: 'NOT_INIT', 1: 'INIT', 2: 'LOGIN_SUCCESS', 3: 'TEMPORARY_LO
 
 ELECTOR_STATUS = {0:'NOT_INIT',1:'INIT',2:'SUBMIT_SUCCEES',3:'SUBMIT_FAILED',4:'UNKNOWN_ERROR'}
 
-# class TestThread(threading.Thread):
-#     def __init__(self,mainStatus):
-#         self.mainStatus=mainStatus
-#         threading.Thread.__init__(self)
-#     def run(self):
-#         print("login:"+str(self.mainStatus.logInStatus))
-#         print("elector:"+str(self.mainStatus.electorStatus))
-#         sleep(5)
-
 
 class MainStatus:
     def __init__(self):
@@ -53,7 +44,9 @@ class ThreadingElector(threading.Thread):
         self.mutex=mutex
         threading.Thread.__init__(self)
         self.elector=SummerElector(session,mainStatus,mainDBdict,mutex)
-        print("Thread init.")
+        print("Thread start.")
+        with self.mutex:
+            self.mainStatus.electorStatus=1
     def run(self):
         if self.bsid=='-all':
             self.elector.run()
@@ -64,8 +57,6 @@ class ThreadingElector(threading.Thread):
                 print("Trial end")
                 if ifSuccess:
                     print("Thread exit.")
-                    with self.mutex:
-                        self.mainStatus.electorStatus=0
                     break
 
 mainStatus=MainStatus()
@@ -74,12 +65,6 @@ mainStatusMutex=threading.Lock()
 db=MainDB()
 
 db.load_data(loaddata())
-
-# tthread=TestThread(mainStatus)
-# tthread.start()
-
-
-
 
 TEST_PAGE="""<!DOCTYPE html>
 <html>
