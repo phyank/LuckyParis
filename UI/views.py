@@ -19,7 +19,7 @@ ELECTOR_STATUS = {0:'NOT_INIT',1:'INIT',2:'SUBMIT_SUCCEES',3:'SUBMIT_FAILED',4:'
 
 
 class MainStatus:
-    def __init__(self):
+    def __init__(self,mutex):
         self.ifLogIn = False
         self.logInStatus = 0  # 0:not_init 1:init 2:success 3:failed 4:failed and quit 5:unknown error
         self.logInMessage = ""
@@ -31,7 +31,7 @@ class MainStatus:
 
         self.username = ""
         self.password = ""
-        self.session = 0
+        self.session = SummerSession(self,mutex)
 
         self.messageToUI=""
 
@@ -43,6 +43,7 @@ class ThreadingElector(threading.Thread):
         self.mainStatus=mainStatus
         self.mutex=mutex
         threading.Thread.__init__(self)
+        print("Prepare to init elector")
         self.elector=SummerElector(session,mainStatus,mainDBdict,mutex)
         print("Thread start.")
         with self.mutex:
@@ -59,8 +60,9 @@ class ThreadingElector(threading.Thread):
                     print("Thread exit.")
                     break
 
-mainStatus=MainStatus()
+
 mainStatusMutex=threading.Lock()
+mainStatus=MainStatus(mainStatusMutex)
 
 db=MainDB()
 
@@ -189,43 +191,55 @@ def command_selector(command,method,data):
 #Views:
 
 def index(method,data):
-    if method=="GET":
-        with mainStatusMutex:
-            ifLogIn=mainStatus.ifLogIn
-        if ifLogIn:
+    with mainStatusMutex:
+        ifLogIn = mainStatus.ifLogIn
+    if ifLogIn:
+        if method=="GET":
             indexT=Template(open_file_as_string('/static/template/index.html'))
             db_data=db.search("-all")
             result=indexT.render(db_data)
             return ViewsResponse(result)
 
         else:
-            return ViewsRedirect("/login")
+            return ViewsRedirect("/")
     else:
-        return ViewsRedirect("/")
+        return ViewsRedirect("/login")
 
 def login(method,data):
     with mainStatusMutex:
         ifLogIn=mainStatus.ifLogIn
+        session = mainStatus.session
+
     if ifLogIn:
         return ViewsRedirect("/")
+
     elif method=="GET":
-        return ViewsResponse(open_file_as_string("/static/template/login.html"))
+        if session.prepare() :
+            return ViewsResponse(open_file_as_string("/static/template/login.html"),{"Cache-Control":"no-store"})
+        else:
+            return ViewsResponse("",{},500)
+
     elif method=="POST":
+
         if os.path.exists(CACHE_SESSION_PATH):
             os.remove(CACHE_SESSION_PATH)
-        session=SummerSession(data['user'],data['pass'],mainStatus,mainStatusMutex)
-        with mainStatusMutex:
-            mainStatus.session=session
-            mainStatus.username,mainStatus.password = data['user'],data['pass']
-            mainStatus.ifLogIn = True
-        return ViewsRedirect("/")
-    else:
-        return ViewsRedirect("/")
+
+        if session:
+            ifLogIn=session.login(data['user'],data['pass'],data['captcha'])
+            with mainStatusMutex:
+                mainStatus.username,mainStatus.password = data['user'],data['pass']
+                mainStatus.ifLogIn = ifLogIn
+        if ifLogIn:
+            session.ifitisit="me"
+            return ViewsRedirect("/")
+        else:
+            return ViewsRedirect("/login")
 
 def logout(method,data):
     with mainStatusMutex:
         mainStatus.username, mainStatus.password="",""
         mainStatus.ifLogIn=False
+        mainStatus.session=SummerSession()
     if os.path.exists(CACHE_SESSION_PATH):
         os.remove(CACHE_SESSION_PATH)
     return ViewsRedirect("/login")
@@ -251,7 +265,11 @@ def control(method,data):
         if data['value']:
             target=int(data['value'])
         if command=="electbybsid":
-            thread=ThreadingElector(target,mainStatus.session,mainStatus,db.dbdict,mainStatusMutex)
+            with mainStatusMutex:
+                session=mainStatus.session
+            print("here")
+            thread=ThreadingElector(target,session,mainStatus,db.dbdict,mainStatusMutex)
+            print("here end")
             with mainStatusMutex:
                 mainStatus.electorThread=thread
             thread.start()

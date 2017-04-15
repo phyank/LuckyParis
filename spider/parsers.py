@@ -4,11 +4,11 @@ from spider.items import Course
 from abc import ABCMeta, abstractmethod
 from utils.loader import ItemLoader
 import json
-import logging
+#import logging
 
 from html.parser import HTMLParser
 
-logger = logging.getLogger()
+#logger = logging.getLogger()
 
 
 class Parser(object, metaclass=ABCMeta):

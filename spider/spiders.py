@@ -6,7 +6,7 @@ from abc import ABCMeta, abstractmethod
 import logging
 import requests
 
-logger = logging.getLogger(__name__)
+#logger = logging.getLogger(__name__)
 
 
 class Spider(object, metaclass=ABCMeta):
@@ -31,7 +31,7 @@ class Spider(object, metaclass=ABCMeta):
                                          *args,
                                          **kwargs)
             except requests.exceptions.HTTPError:
-                logger.error("asp arguments expired.")
+                #logger.error("asp arguments expired.")
                 self.__refresh_parser()
 
     def __refresh_parser(self):

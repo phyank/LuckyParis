@@ -6,16 +6,15 @@ from bin.settings import (NORMAL_CHECK_URL_TEMPLATE,
 from urllib.parse import unquote
 from time import sleep
 from functools import wraps
-from PIL import Image
 from io import BytesIO
-from pytesseract import image_to_string
+import shutil
 import requests
 import logging
 import re
 import pickle
 import os
 
-logger = logging.getLogger(__name__)
+#logger = logging.getLogger(__name__)
 
 #FIXME:Use mainStatus to report, No printing.
 class Session(object):
@@ -23,62 +22,86 @@ class Session(object):
     ''' 包装requests.session，进行登录后的验证和处理教务网的message和session过期
     '''
     # Abstract base class needing CHECK_URL.
-    def __init__(self, username, password, mainStatus, mainStatusmutex):
+    def __init__(self, mainStatus, mainStatusmutex):
         self.mainStatus=mainStatus
         self.mutex=mainStatusmutex
-        self.username = username
-        self.password = password
-        self._refresh()
+        self.form={}
+        self.try_count=0
+        #self._refresh()
         with self.mutex:
             self.mainStatus.logInStatus=1
 
-    def _login(self):
+    def prepare(self):
         def __parse_jaccount_page(html):
             search_pattern = r'\<input type=\"hidden\" name=\"(\w+)\" value=\"([a-zA-Z0-9_+/=]+)\"\>'
             for match in re.finditer(search_pattern, html):
                 yield match.groups()
-
         try:
-            with open(CACHE_SESSION_PATH, 'rb') as f:
-                # TODO: Verify the sesion is not out dated.
-                self.raw_session = pickle.load(f)
-        except FileNotFoundError:
-            for try_count in range(self.MAX_LOGIN_TRAIL):
-                self.raw_session = requests.Session()
-                jaccount_response = self.raw_session.get(ELE_LOGIN_URL)
-                form = dict(__parse_jaccount_page(jaccount_response.text))
-                captcha_url = JACCOUNT_URL + re.search(
-                    r'\<img src=\"(captcha\?\d+)\"',
-                    jaccount_response.text).group(1)
-                captcha = image_to_string(Image.open(BytesIO(
-                    self.raw_session.get(captcha_url, stream=True).content)))
-                form.update({'v': '',
-                             'user': self.username,
-                             'pass': self.password,
-                             'captcha': captcha})
+            self.raw_session = requests.Session()
+            jaccount_response = self.raw_session.get(ELE_LOGIN_URL)
+            self.form = dict(__parse_jaccount_page(jaccount_response.text))
+            captcha_url = JACCOUNT_URL + re.search(
+                r'\<img src=\"(captcha\?\d+)\"',
+                jaccount_response.text).group(1)
 
-                post_response = self.raw_session.post(
-                    JACCOUNT_URL+'ulogin', data=form)
-                if '教学信息服务网' in post_response.text:
-                    with self.mutex:
-                        self.mainStatus.logInStatus=2
-                        self.mainStatus.logInMessage="Login succeeded!"
-                    #logger.info("Login succeeded!")
-                    # with open(CACHE_SESSION_PATH, 'wb') as f:
-                    #     pickle.dump(self.raw_session, f)
-                    return
-                else:
-                    with self.mutex:
-                        self.mainStatus.logInStatus=3
-                        self.mainStatus.logInMessage="The %d attempt to login failed ...Sleeping..." % try_count
-                    #logger.warning("The %d attempt to login failed ..." % try_count)
-                    # 每30秒才能登录一次
+            capfile=open(os.path.join("UI","static","image","captcha.jpg"),"wb")
+            shutil.copyfileobj(BytesIO(self.raw_session.get(captcha_url, stream=True).content)
+                            ,capfile)
+            capfile.close()
+            return True
 
-                    sleep(30)
-            with self.mutex:
-                self.mainStatus.logInStatus=4
-            #logger.error("Login failed...")
-            raise ValueError("username or password incorrect")
+        except: return False
+
+
+    def login(self,username,password,captcha):
+        # def __parse_jaccount_page(html):
+        #     search_pattern = r'\<input type=\"hidden\" name=\"(\w+)\" value=\"([a-zA-Z0-9_+/=]+)\"\>'
+        #     for match in re.finditer(search_pattern, html):
+        #         yield match.groups()
+        #
+        # try:
+        #     with open(CACHE_SESSION_PATH, 'rb') as f:
+        #         # TODO: Verify the sesion is not out dated.
+        #         self.raw_session = pickle.load(f)
+        # except FileNotFoundError:
+            #for try_count in range(self.MAX_LOGIN_TRAIL):
+            # self.raw_session = requests.Session()
+            # jaccount_response = self.raw_session.get(ELE_LOGIN_URL)
+            # form = dict(__parse_jaccount_page(jaccount_response.text))
+            # captcha_url = JACCOUNT_URL + re.search(
+            #     r'\<img src=\"(captcha\?\d+)\"',
+            #     jaccount_response.text).group(1)
+            # captcha = image_to_string(Image.open(BytesIO(
+            #     self.raw_session.get(captcha_url, stream=True).content)))
+            self.form.update({'v': '',
+                         'user': username,
+                         'pass': password,
+                         'captcha': captcha})
+
+            post_response = self.raw_session.post(
+                JACCOUNT_URL+'ulogin', data=self.form)
+            self.try_count+=1
+            if '教学信息服务网' in post_response.text:
+                with self.mutex:
+                    self.mainStatus.logInStatus=2
+                    self.mainStatus.logInMessage="Login succeeded!"
+                #logger.info("Login succeeded!")
+                # with open(CACHE_SESSION_PATH, 'wb') as f:
+                #     pickle.dump(self.raw_session, f)
+                return True
+            else:
+                with self.mutex:
+                    self.mainStatus.logInStatus=3
+                    self.mainStatus.logInMessage="The %d attempt to login failed ...Sleeping..." % self.try_count
+                #logger.warning("The %d attempt to login failed ..." % try_count)
+                # 每30秒才能登录一次
+                return False
+
+                #sleep(30)
+            # with self.mutex:
+            #     self.mainStatus.logInStatus=4
+            # #logger.error("Login failed...")
+            # raise ValueError("username or password incorrect")
 
     def _tackle_frequent_requests_error(func):
         ''' 处理页面过期和频繁刷新页面的提示
@@ -126,16 +149,16 @@ class Session(object):
     def head(self, *args, **kwargs):
         return self.raw_session.head(*args, **kwargs)
 
-    def refresh(self):
-        try:
-            os.remove(CACHE_SESSION_PATH)
-        except FileNotFoundError:
-            pass
-        self._refresh()
-
-    def _refresh(self):
-        self._login()
-        self.head(self.CHECK_URL)
+    # def refresh(self):
+    #     try:
+    #         os.remove(CACHE_SESSION_PATH)
+    #     except FileNotFoundError:
+    #         pass
+    #     self._refresh()
+    #
+    # def _refresh(self):
+    #     self._login()
+    #     self.head(self.CHECK_URL)
 
 class SummerSession(Session):
     CHECK_URL = SUMMER_CHECK_URL_TEMPLATE % 2

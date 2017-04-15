@@ -7,18 +7,18 @@ from bin.settings import (SUMMER_SUBMIT_URL, SELECT_SUMMER_COURSE_URL,
 from time import sleep
 import re
 import json
-import logging
+#import logging
 
 from spider.parsers import ElectorParser
 
-logger = logging.getLogger(__name__)
-cid_logger = logging.getLogger('cid')
-fh = logging.FileHandler('/tmp/course_record.log')
-fh.setLevel(logging.INFO)
-fh.setFormatter(logging.Formatter('[+] %(asctime)s - %(message)s'))
-cid_logger.addHandler(fh)
-
-cid_logger.error('Logger Started.')
+# logger = logging.getLogger(__name__)
+# cid_logger = logging.getLogger('cid')
+# fh = logging.FileHandler('/tmp/course_record.log')
+# fh.setLevel(logging.INFO)
+# fh.setFormatter(logging.Formatter('[+] %(asctime)s - %(message)s'))
+# cid_logger.addHandler(fh)
+#
+# cid_logger.error('Logger Started.')
 
 #FIXME:Use mainStatus to report, No printing.
 # FIXME: add a factory and refactor it with spider.
@@ -27,12 +27,25 @@ class SummerElector(object):
     URL = SUMMER_URL
     SLEEP_DURATION = 2
     def __init__(self,session,mainStatus,mainDBdict,mutex):
+        print(1)
         self.mutex=mutex
+        print(2)
         self.session = session
+        print(3)
         self.db=mainDBdict
+        print(4)
         self.mainStatus=mainStatus
-        self.asp_dict = SummerParser(self.session.get(self.URL)).get_asp_args()
+        print(5)
+        print(self.session.ifitisit)
+        temp0=self.session.get(self.URL)
+        print(6)
+        temp1=SummerParser(temp0)
+        print(7)
+        self.asp_dict = temp1.get_asp_args()
+        print(8)
         self.seen_available = set()
+
+        print("elector init")
 
     def get_non_full_tongshi_cid(self, wanted_types=TONGSHI_NAMES):
         sleep(self.SLEEP_DURATION)
@@ -50,10 +63,10 @@ class SummerElector(object):
                 # data logger
                 if cid not in self.seen_available and not is_full:
                     self.seen_available.add(cid)
-                    cid_logger.info('%s is available' % cid)
+                    #cid_logger.info('%s is available' % cid)
                 elif cid in self.seen_available and is_full:
                     self.seen_available.remove(cid)
-                    cid_logger.info('%s is full' % cid)
+                    #cid_logger.info('%s is full' % cid)
             except AttributeError:
                 pass
 
@@ -124,7 +137,7 @@ class SummerElector(object):
 
     #FIXME:Use mainStatus to report, No printing.
     def run(self, wanted_types=TONGSHI_NAMES):
-        logger.debug('Elector Started...')
+        #logger.debug('Elector Started...')
         while True:
             for cid in self.get_non_full_tongshi_cid(wanted_types):
                 self.grab_course_by_cid(cid)
