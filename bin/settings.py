@@ -23,3 +23,5 @@ TONGSHI_NAMES = ['人文学科', '社会科学', '数学或逻辑', '自然科�
 
 CACHE_SESSION_PATH = '/tmp/session.pickle'
 COURSE_DATA_PATH = 'data/course.json'
+
+SLEEP_DURATION=2

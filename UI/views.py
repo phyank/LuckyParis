@@ -13,13 +13,13 @@ from database.mainDB import MainDB
 
 
 SESSION_STATUS = {0: 'NOT_INIT', 1: 'INIT', 2: 'LOGIN_SUCCESS', 3: 'TEMPORARY_LOGIN_FAILED',
-                  4: 'FAILED_AND_QUIT', 5: 'TIME_OUT', 6: 'UNKNOWN_ERROR'}
+                  4: 'FAILED_AND_QUIT', 5: 'TIME_OUT', 6: 'UNKNOWN_ERROR',7:'NEED_SLEEP'}
 
-ELECTOR_STATUS = {0:'NOT_INIT',1:'INIT',2:'SUBMIT_SUCCEES',3:'SUBMIT_FAILED',4:'UNKNOWN_ERROR'}
+ELECTOR_STATUS = {0:'NOT_INIT',1:'INIT',2:'SUBMIT_SUCCEES',3:'SUBMIT_FAILED',4:'UNKNOWN_ERROR',5:'CONFLICT'}
 
 
 class MainStatus:
-    def __init__(self,mutex):
+    def __init__(self,mainmutex):
         self.ifLogIn = False
         self.logInStatus = 0  # 0:not_init 1:init 2:success 3:failed 4:failed and quit 5:unknown error
         self.logInMessage = ""
@@ -31,7 +31,7 @@ class MainStatus:
 
         self.username = ""
         self.password = ""
-        self.session = SummerSession(self,mutex)
+        self.session = 0
 
         self.messageToUI=""
 
@@ -58,6 +58,9 @@ class ThreadingElector(threading.Thread):
                 print("Trial end")
                 if ifSuccess:
                     print("Thread exit.")
+                    break
+                elif self.session.status in [5,6]:
+                    print("Session error.")
                     break
 
 
@@ -206,15 +209,20 @@ def index(method,data):
         return ViewsRedirect("/login")
 
 def login(method,data):
+    session=SummerSession(mainStatus,mainStatusMutex)
     with mainStatusMutex:
         ifLogIn=mainStatus.ifLogIn
-        session = mainStatus.session
 
     if ifLogIn:
         return ViewsRedirect("/")
 
     elif method=="GET":
-        if session.prepare() :
+        ifPrepared= session.prepare()
+
+        with mainStatusMutex:
+            mainStatus.session=session
+
+        if ifPrepared :
             return ViewsResponse(open_file_as_string("/static/template/login.html"),{"Cache-Control":"no-store"})
         else:
             return ViewsResponse("",{},500)
@@ -223,6 +231,9 @@ def login(method,data):
 
         if os.path.exists(CACHE_SESSION_PATH):
             os.remove(CACHE_SESSION_PATH)
+
+        with mainStatusMutex:
+            session=mainStatus.session
 
         if session:
             ifLogIn=session.login(data['user'],data['pass'],data['captcha'])
@@ -239,7 +250,7 @@ def logout(method,data):
     with mainStatusMutex:
         mainStatus.username, mainStatus.password="",""
         mainStatus.ifLogIn=False
-        mainStatus.session=SummerSession()
+        mainStatus.session=0
     if os.path.exists(CACHE_SESSION_PATH):
         os.remove(CACHE_SESSION_PATH)
     return ViewsRedirect("/login")

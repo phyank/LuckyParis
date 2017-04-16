@@ -2,7 +2,7 @@ from login.session import SummerSession
 from spider.parsers import SummerParser
 # TODO: use relative import here
 from bin.settings import (SUMMER_SUBMIT_URL, SELECT_SUMMER_COURSE_URL,
-                        COURSE_DATA_PATH, SUMMER_URL, TONGSHI_NAMES)
+                        COURSE_DATA_PATH, SUMMER_URL, TONGSHI_NAMES,SLEEP_DURATION)
 
 from time import sleep
 import re
@@ -27,22 +27,21 @@ class SummerElector(object):
     URL = SUMMER_URL
     SLEEP_DURATION = 2
     def __init__(self,session,mainStatus,mainDBdict,mutex):
-        print(1)
+
         self.mutex=mutex
-        print(2)
+
         self.session = session
-        print(3)
+
         self.db=mainDBdict
-        print(4)
+
         self.mainStatus=mainStatus
-        print(5)
-        print(self.session.ifitisit)
+
         temp0=self.session.get(self.URL)
-        print(6)
+
         temp1=SummerParser(temp0)
-        print(7)
+
         self.asp_dict = temp1.get_asp_args()
-        print(8)
+
         self.seen_available = set()
 
         print("elector init")
@@ -105,6 +104,9 @@ class SummerElector(object):
         parser.feed(result.text)
 
 
+        if self.session.status in [5,6]:
+            return False
+
         if self.URL in url:
             for i in parser.tablehref:
                 if str(bsid) in i:
@@ -134,6 +136,8 @@ class SummerElector(object):
             data={'LessonTime1$btnChoose':
                   '选定此教师', 'myradiogroup': bsid},
             asp_dict=self.get_asp_by_bsid(bsid))
+
+
 
     #FIXME:Use mainStatus to report, No printing.
     def run(self, wanted_types=TONGSHI_NAMES):

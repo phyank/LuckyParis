@@ -184,12 +184,16 @@ request.send();
 
 function refreshdata(responseText){
 var response=JSON.parse(responseText);
-if (loginstatus!=response.loginstatus){alert("登录状态已改变! :"+response.loginstatus);};
+if (loginstatus!=response.loginstatus){
+if(response.loginstatus==5){
+alert("登录超时，请重新登录！");
+window.navigate("/logout")
+}}
 if (electorstatus!=response.electorstatus){
 if (response.electorstatus==2){
 alert("选课成功！"+messagetoui);
-}else
-{alert("选课状态改变，状态码："+response.electorstatus+"\n消息："+response.messagetoui);}};
+}
+};
 
 loginstatus=response.loginstatus;
 loginmessage=response.loginmessage;
