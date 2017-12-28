@@ -1,7 +1,7 @@
 # LuckyParis
 Hera, Athena and Aphrodite, who is the best? However, you should be able to make a choice first
 
-
+Special thanks to @yuq-1s
 
 目前项目依然有外部库依赖，我们会逐步摆脱这些依赖:
 
